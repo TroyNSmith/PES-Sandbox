@@ -6,9 +6,12 @@ from .rdk import mol_to_smiles
 from .ref import CustomTypes as CT
 
 
-def molecular_graph(smiles: str) -> CT.AutomolGraph:
+def molecular_graph(smiles: str, canonical: str = True) -> CT.AutomolGraph:
     """Generates a molecular AutoMol graph from SMILES string."""
     graph = automol.smiles.graph(smiles)
+
+    if canonical:
+        return automol.graph.canonical(graph)
 
     return graph
 
@@ -17,62 +20,40 @@ def process_rdkit_reaction(reactants: Mol | CT.RDMols, product_sets: list[CT.RDM
     """Processes RDKit reactions through the AutoMol package."""
     enumerated_graph = nx.DiGraph()
 
-    reactant_amchis = []
-    reactant_smiles_list = []
+    def _add_stationary(molecules, role) -> list:
+        amchis_list, smiles_list = [], []
 
-    for reactant in reactants:
-        (reactant_smiles,) = mol_to_smiles(reactant)
-        reactant_smiles_list.append(reactant_smiles)
+        for molecule in molecules:
+            (smiles,) = mol_to_smiles(molecule)
+            graph = molecular_graph(smiles)
 
-        reactant_graph = molecular_graph(reactant_smiles)
-        reactant_graph = automol.graph.canonical(reactant_graph)
+            amchi = automol.graph.amchi(graph)
+            geom = automol.graph.geometry(graph)
+            xyz = automol.geom.xyz_string(geom)
 
-        reactant_amchi = automol.graph.amchi(reactant_graph)
-        reactant_amchis.append(reactant_amchi)
+            smiles_list.append(smiles)
+            amchis_list.append(amchi)
 
-        reactant_geom = automol.graph.geometry(reactant_graph)
-        reactant_xyz = automol.geom.xyz_string(reactant_geom)
+            enumerated_graph.add_node(amchi, smiles=smiles, xyz=xyz, role=role)
 
-        enumerated_graph.add_node(
-            reactant_amchi, smiles=reactant_smiles, xyz=reactant_xyz, role="reactant"
-        )
+        return amchis_list, smiles_list
+
+    (reactant_amchis, reactant_smiles) = _add_stationary(reactants, "reactant")
 
     for products in product_sets:
-        product_amchis = []
-        product_smiles_list = []
+        (product_amchis, product_smiles) = _add_stationary(products, "product")
 
-        for product in products:
-            (product_smiles,) = mol_to_smiles(product)
-            product_smiles_list.append(product_smiles)
-
-            product_graph = molecular_graph(product_smiles)
-            product_graph = automol.graph.canonical(product_graph)
-
-            product_amchi = automol.graph.amchi(product_graph)
-            product_amchis.append(product_amchi)
-
-            product_geom = automol.graph.geometry(product_graph)
-            product_xyz = automol.geom.xyz_string(product_geom)
-
-            enumerated_graph.add_node(
-                product_amchi, smiles=product_smiles, xyz=product_xyz, role="product"
-            )
-
-        (reaction,) = reaction_graph(
-            tuple(reactant_smiles_list), tuple(product_smiles_list)
-        )
+        (reaction,) = reaction_graph(tuple(reactant_smiles), tuple(product_smiles))
 
         transition_graph = automol.reac.ts_graph(reaction)
         transition_graph = automol.graph.canonical(transition_graph)
-        transition_amchi = automol.graph.amchi(transition_graph)
 
+        transition_amchi = automol.graph.amchi(transition_graph)
         transition_geom = automol.graph.geometry(transition_graph)
         transition_xyz = automol.geom.xyz_string(transition_geom)
 
         (_, bonds) = transition_graph
-
         broken, formed = [], []
-
         for bond, (order, _) in bonds.items():
             if order == 0.1:
                 formed.append(bond)
@@ -116,6 +97,7 @@ def reaction_graph(
     reactants: CT.SMILES | CT.SMILES_Set,
     products: CT.SMILES | CT.SMILES_Set,
     include_stereo: bool = False,
+    canonical: bool = True,
 ) -> CT.AutomolGraph:
     """Generates a reaction Automol graph from SMILES strings."""
     reactants = (reactants,) if isinstance(reactants, str) else reactants
