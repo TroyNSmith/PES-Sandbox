@@ -50,6 +50,7 @@ class ORCA_Parameters:
     processors: int = 8
     max_memory: int = 1000
     lscratch_size: int = 20
+    time_limit: str = "04:00:00"
 
 
 def orca_inputs(
@@ -89,7 +90,7 @@ trap cleanup EXIT\n
 """
 
     sh_body = f"""module load ORCA/6.1
-$(which orca) {pars.name_out}.inp > "$SUBMIT_DIR/calc.log"
+$(which orca) {pars.name_out}.inp > "$SUBMIT_DIR/{pars.name_out}.log"
 """
     if isinstance(data_dir, str):
         data_dir = Path(data_dir)

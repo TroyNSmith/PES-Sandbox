@@ -12,17 +12,16 @@ def amchi_in_database(amchi: str, connection: sqlite3.Connection):
     return matches is None
 
 
-def connect(file_path: str | Path) -> sqlite3.Connection:
+def connect(data_directory: str | Path) -> sqlite3.Connection:
     """Connects to a sql database."""
-    return sqlite3.connect(file_path)
+    Path(data_directory).mkdir(exist_ok=True, parents=True)
+    return sqlite3.connect(data_directory / "data.db")
 
 
 def enumerated_graph_into_database(
-    enumerated_graph: CT.NetworkXGraph, database_path: str | Path
+    enumerated_graph: CT.NetworkXGraph, data_directory: str | Path, connection: sqlite3.Connection
 ):
     """Fills sqlite3 database with enumerated reaction graph."""
-    data_directory = Path(database_path).parent
-    connection = sqlite3.connect(database_path)
     cursor = connection.cursor()
 
     to_submit = {}
@@ -90,7 +89,6 @@ def enumerated_graph_into_database(
             to_submit[amchi] = "transition"
 
     connection.commit()
-    connection.close()
 
     return to_submit
 
