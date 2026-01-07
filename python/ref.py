@@ -1,4 +1,3 @@
-import automol
 import networkx
 from rdkit.Chem import Mol
 
@@ -14,8 +13,8 @@ class CustomTypes:
     InChI = str
     InChI_Set = tuple[InChI, ...]
 
-    NetworkXGraph = networkx.graph
-    AutomolGraph = automol.graph
+    NetworkXGraph = networkx.Graph
+    AutomolGraph = tuple[dict, dict]
 
 
 class ValenceIdentities:
