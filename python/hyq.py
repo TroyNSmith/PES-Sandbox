@@ -6,7 +6,6 @@ from pathlib import Path
 
 from hyperqueue import Client, Job
 from hyperqueue.ffi.protocol import ResourceRequest
-from hyperqueue.task.function import PythonEnv
 
 from .ref import CustomTypes as CT
 
@@ -74,11 +73,10 @@ def submit_tasks_orca(task_graph: CT.NetworkXGraph):
     allocation_requests = set()
 
     job = Job()
-    # py_env = PythonEnv(prologue=pixi_activation_hook)
-    # client = Client(HQ_SERVER_DIR, python_env=py_env)
     client = Client(HQ_SERVER_DIR)
 
     for n, d in task_graph.nodes(data=True):
+        cwd = Path(n).parent
         pars = d["pars"]
 
         dependent_tasks = [all_tasks[dep] for dep in list(task_graph.predecessors(n))]
@@ -92,11 +90,11 @@ def submit_tasks_orca(task_graph: CT.NetworkXGraph):
 
         task = job.function(
             fn=_bash(pars.name_out),
-            cwd=n,
+            cwd=cwd,
             deps=dependent_tasks,
             resources=ResourceRequest(cpus=pars.processors, resources={"mem": mem_mib}),
-            stderr=n / "stderr.log",
-            stdout=n / "stdout.log",
+            stderr=cwd / "stderr.log",
+            stdout=cwd / "stdout.log",
         )
 
         all_tasks[n] = task

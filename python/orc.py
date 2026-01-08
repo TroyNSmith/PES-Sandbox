@@ -1,34 +1,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-
-class Templates:
-    class GOAT:
-        XTB = """{header}
-! XTB GOAT
-{xyz}
-"""
-
-    class Optimization:
-        WB97X_3C = """{header}
-! WB97X-3C OPT
-{xyz}
-"""
-
-    class Optimization_Frequency:
-        M062x_def2_TZVPP = """{header}
-! M062X def2-TZVPP def2-TZVPP/c DEFGRID3 TightSCF SlowConv Opt NumFreq
-%geom\n MaxIter 500\nend
-{xyz}
-"""
-
-    class Single_Point_Calculation:
-        CCSDT_F12RI_cc_pVSZ_F12 = """{header}
-! CCSD(T)-F12/RI cc-pVDZ-F12 cc-pVDZ-F12-CABS cc-pVTZ/c
-%geom\n MaxIter 500\nend
-{xyz}
-"""
-
+from math import floor
+import copy
 
 @dataclass
 class ORCA_Parameters:
@@ -59,11 +33,12 @@ def orca_inputs(
     data_dir: str | Path,
 ):
     """Writes .inp and .sh files for ORCA calculation."""
+    pars = copy.deepcopy(pars)
 
     inp_text = f"""%PAL NPROCS {pars.processors} END
-%MaxCore {pars.max_memory}
+%MaxCore {floor(pars.max_memory * 0.8)}
 %base "{pars.name_out}"
-! {pars.functional} {pars.basis} DEFGRID3 TightSCF SlowConv Opt NumFreq
+! {pars.functional} {pars.basis} {pars.method_keywords}
 {pars.block_inputs}
 * xyzfile 0 {pars.multiplicity} {pars.xyz_in}
 """
@@ -91,6 +66,7 @@ trap cleanup EXIT\n
 
     sh_body = f"""module load ORCA/6.1
 $(which orca) {pars.name_out}.inp > "$SUBMIT_DIR/{pars.name_out}.log"
+{pars.bash_commands}
 """
     if isinstance(data_dir, str):
         data_dir = Path(data_dir)
@@ -99,4 +75,4 @@ $(which orca) {pars.name_out}.inp > "$SUBMIT_DIR/{pars.name_out}.log"
     (directory / f"{pars.name_out}.inp").write_text(inp_text)
     (directory / f"{pars.name_out}.sh").write_text(sh_header + sh_body)
 
-    return directory
+    return directory / f"{pars.name_out}.sh"

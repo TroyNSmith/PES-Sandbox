@@ -51,7 +51,6 @@ def process_rdkit_reaction(reactants: Mol | CT.RDMols, product_sets: list[CT.RDM
 
             dmat_angstrom = automol.geom.distance_matrix(geom) * 0.529177
 
-            scans = []
             for broken_bond in broken:
                 a, b = broken_bond
                 if len(formed) > 0:
@@ -60,18 +59,22 @@ def process_rdkit_reaction(reactants: Mol | CT.RDMols, product_sets: list[CT.RDM
                         if len(shared) == 1:
                             c = next(iter(formed_bond - shared))
                             dist = dmat_angstrom[b, c]
-                            scans.append(f"B {b} {c} = {dist:.3f}, 0.7, 100")
+                            active_atoms = f"{b} {c}"
+                            scan = f"scan B {active_atoms} = {dist:.3f}, 0.7, 100"
+                            
                 else:
-                    scans.append(f"B {a} {b} = {dmat_angstrom[a, b]:.3f}, 2.0, 100")
+                    active_atoms = f"{a} {b}"
+                    scan = f"scan B {active_atoms} = {dmat_angstrom[a, b]:.3f}, 2.0, 100"
 
-            return scans
+            return scan, active_atoms
 
-        scans = _build_scan()
+        scan, active_atoms = _build_scan()
 
         enumerated_graph.add_node(
             amchi,
             xyz=xyz,
-            scan=scans,
+            scan=scan,
+            active_atoms=active_atoms,
             role="transition",
             reactants=reactant_amchis,
             products=product_amchis,
