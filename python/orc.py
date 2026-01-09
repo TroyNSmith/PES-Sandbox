@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+import mmap
 from math import floor
 import copy
 
@@ -76,3 +77,28 @@ $(which orca) {pars.name_out}.inp > "$SUBMIT_DIR/{pars.name_out}.log"
     (directory / f"{pars.name_out}.sh").write_text(sh_header + sh_body)
 
     return directory / f"{pars.name_out}.sh"
+
+def parse_log_file(log_file: str | Path, search_string: str):
+    """Extracts single point energy from log file."""
+    log_file = Path(log_file)
+    search_bytes = search_string.encode()
+
+    matches = []
+    with open(log_file, "r+b") as f:
+        mm = mmap.mmap(f.fileno(), 0)
+        for line_bytes in iter(mm.readline, b""):
+            if search_bytes in line_bytes:
+                matches.append(line_bytes.decode("utf-8").strip())
+
+    if len(matches) == 1:
+        return matches[0]
+    
+    else:
+        print(f"""Log file contains search string {len(matches)} times.
+        Will not log results for this search string.
+
+        Search string: {search_string}
+        Log file path: {log_file}
+        """)
+        
+        return None

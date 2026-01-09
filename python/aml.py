@@ -41,9 +41,13 @@ def process_rdkit_reaction(reactants: Mol | CT.RDMols, product_sets: list[CT.RDM
     def _add_transition(reaction: CT.AutomolGraph):
         graph = transition_graph(reaction)
 
-        amchi = automol.graph.amchi(graph)
-        geom = automol.graph.geometry(graph)
-        xyz = automol.geom.xyz_string(geom)
+        try:
+            amchi = automol.graph.amchi(graph)
+            geom = automol.graph.geometry(graph)
+            xyz = automol.geom.xyz_string(geom)
+
+        except Exception:
+            return None
 
         def _build_scan():
             formed = automol.graph.ts.forming_bond_keys(graph)
@@ -90,6 +94,9 @@ def process_rdkit_reaction(reactants: Mol | CT.RDMols, product_sets: list[CT.RDM
 
         for reaction in reaction_graphs(tuple(reactant_smiles), tuple(product_smiles)):
             transition_amchi = _add_transition(reaction)
+
+            if transition_amchi is None:
+                continue
 
             for r_amchi in reactant_amchis:
                 enumerated_graph.add_edge(r_amchi, transition_amchi)

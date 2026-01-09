@@ -1,5 +1,13 @@
 # pixi environments
 .pixi/*
 !.pixi/config.toml
-data/*
+
+# calculation results
+data/**
+!data/**/
+!data/**/*.allxyz
+!data/**/*.log
+!data/**/*.xyz
+
+# hyperqueue servers
 .server/*
